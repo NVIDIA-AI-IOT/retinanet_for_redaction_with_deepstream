@@ -94,7 +94,7 @@ cocodata = oij.openimages2coco(set1, catmid2name, images_dir,
                                output_class_ids={'Human face': 1}, 
                                max_size=880, min_ann_size=(1,1), 
                                min_ratio=2.0)
-oij.write_json_data(cocodata, output_json)
+write_json_data(cocodata, output_json)
 
 ```
 
@@ -121,7 +121,7 @@ cocodata = oij.openimages2coco(trainset1, catmid2name, images_dir, desc="Open Im
                                output_class_ids={'Human face': 1}, 
                                max_size=880, min_ann_size=(1,1), 
                                min_ratio=2.0)
-oij.write_json_data(cocodata, output_json)
+write_json_data(cocodata, output_json)
 
 ```
 
