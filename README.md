@@ -2,6 +2,11 @@
 
 This sample shows how to train and deploy a deep learning model for the real time redaction of faces from video streams using the NVIDIA DeepStream SDK.
 
+## Blog posts
+There are two blog posts that accompany this repo:
+- [Building a Real-time Redaction App Using NVIDIA DeepStream, Part 1: Training](https://devblogs.nvidia.com/real-time-redaction-app-nvidia-deepstream-part-1-training/)
+- [Building a Real-time Redaction App Using NVIDIA DeepStream, Part 2: Deployment](https://devblogs.nvidia.com/real-time-redaction-app-nvidia-deepstream-part-2-deployment/)
+
 ## Getting Started Guide
 
 ### Data preparation
