@@ -8,13 +8,16 @@ which we can then use of redact faces in video streams.
 ```bash
 DATA_DIR=/<path to your data dir>
 WORKING_DIR=/<path to this directory>
-docker run -it --gpus all --rm --ipc=host -v$DATA_DIR:/data -v$WORKING_DIR:/src -w/src nvcr.io/nvidian/pytorch:19.06-py3
+docker run -it --gpus all --rm --ipc=host -v$DATA_DIR:/data -v$WORKING_DIR:/src -w/src nvcr.io/nvidian/pytorch:19.10-py3
 ```
 
 Install `retinanet` from the NVIDIA implementation repository.
 
 ```bash
-pip install --no-cache-dir git+https://github.com/nvidia/retinanet-examples
+git clone https://github.com/NVIDIA/retinanet-examples.git
+cd retinanet-examples
+git checkout 19.10
+pip install -e .
 ```
 
 ## Train
