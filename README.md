@@ -22,7 +22,7 @@ The [training README](TRAINING_README.md) shows how to train, evaluate and expor
 
 #### Jetpack compatibility
 
-Please note that this repo has been designed for running DeepStream 4.0 in Jetpack 4.2. Support for Jetpack 4.3 is in development. 
+Please note that the master branch has been designed for running DeepStream 4.0 in Jetpack 4.2. For running in DeepStream 4.0.2 in Jetpack 4.3, please switch over to the Jetpack4.3 branch.
 
 #### DeepStream
 Before we start with our redaction app, please make sure that you're able to successfully run the DeepStream sample apps. 
