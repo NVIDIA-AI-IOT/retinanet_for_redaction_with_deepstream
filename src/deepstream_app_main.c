@@ -575,15 +575,15 @@ main (int argc, char *argv[])
   }
 
   if (print_version) {
-    g_print ("deepstream-app version %d.%d\n",
-        NVDS_APP_VERSION_MAJOR, NVDS_APP_VERSION_MINOR);
+    g_print ("deepstream-app version %d.%d.%d\n",
+        NVDS_APP_VERSION_MAJOR, NVDS_APP_VERSION_MINOR, NVDS_APP_VERSION_MICRO);
     nvds_version_print ();
     return 0;
   }
 
   if (print_dependencies_version) {
-    g_print ("deepstream-app version %d.%d\n",
-        NVDS_APP_VERSION_MAJOR, NVDS_APP_VERSION_MINOR);
+    g_print ("deepstream-app version %d.%d.%d\n",
+        NVDS_APP_VERSION_MAJOR, NVDS_APP_VERSION_MINOR, NVDS_APP_VERSION_MICRO);
     nvds_version_print ();
     nvds_dependencies_version_print ();
     return 0;

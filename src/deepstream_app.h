@@ -60,6 +60,7 @@ typedef struct
   gulong primary_bbox_buffer_probe_id;
   gulong fps_buffer_probe_id;
   GstElement *bin;
+  GstElement *tee;
   NvDsPrimaryGieBin primary_gie_bin;
   NvDsOSDBin osd_bin;
   NvDsSecondaryGieBin secondary_gie_bin;
@@ -129,15 +130,31 @@ struct _AppCtx
   NvDsConfig config;
   NvDsInstanceData instance_data[MAX_SOURCE_BINS];
   NvDsAppPerfStructInt perf_struct;
-  bbox_generated_callback primary_bbox_generated_cb;
+  bbox_generated_callback bbox_generated_post_analytics_cb;
   bbox_generated_callback all_bbox_generated_cb;
   overlay_graphics_callback overlay_graphics_cb;
   NvDsFrameLatencyInfo *latency_info;
   GMutex latency_lock;
+  rtcp_sender_report_callback rtcp_sender_report_cb;
 };
 
+/**
+ * @brief  Create DS Anyalytics Pipeline per the appCtx
+ *         configurations
+ * @param  appCtx [IN/OUT] The application context
+ *         providing the config info and where the
+ *         pipeline resources are maintained
+ * @param  bbox_generated_post_analytics_cb [IN] This callback
+ *         shall be triggered after analytics
+ *         (PGIE, Tracker or the last SGIE appearing
+ *         in the pipeline)
+ *         More info: create_common_elements()
+ * @param  all_bbox_generated_cb [IN]
+ * @param  perf_cb [IN]
+ * @param  overlay_graphics_cb [IN]
+ */
 gboolean create_pipeline (AppCtx * appCtx,
-    bbox_generated_callback primary_bbox_generated_cb,
+    bbox_generated_callback bbox_generated_post_analytics_cb,
     bbox_generated_callback all_bbox_generated_cb,
     perf_callback perf_cb,
     overlay_graphics_callback overlay_graphics_cb);

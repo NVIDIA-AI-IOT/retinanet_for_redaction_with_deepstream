@@ -22,7 +22,7 @@ The [training README](TRAINING_README.md) shows how to train, evaluate and expor
 
 #### Jetpack compatibility
 
-Please note that this repo has been designed for running DeepStream 4.0 in Jetpack 4.2. Support for Jetpack 4.3 is in development. 
+Please note that this branch `Jetpack4.3` has been designed for running DeepStream 4.0.2 in Jetpack 4.3 with TensorRT 6. 
 
 #### DeepStream
 Before we start with our redaction app, please make sure that you're able to successfully run the DeepStream sample apps. 
@@ -36,7 +36,7 @@ Running the example above will show four streams of the same video, with vehicle
 
 Now we can make the redaction app.
 
-* Copy the contents of this folder to `<path to deepstream>/deepstream_sdk_v4.0_jetson/sources/apps/`.
+* Copy the contents of this folder to `<path to deepstream>/deepstream_sdk_v4.0.2_jetson/sources/apps/`.
 * Install the prerequisites.
 
 ```bash
@@ -46,7 +46,7 @@ Now we can make the redaction app.
 ```
 
 * Run `make`
-  * If `make` gives any error, check that 1) in the Makefile we are pointing to correct and valid paths, and 2) the appropriate packages have been installed, including libgstreamer1.0-dev, libgstreamer1.0, and libgstreamer-plugins-base1.0-dev.
+  * If `make` gives any error, check that 1) in the Makefile we are pointing to correct and valid paths, and 2) the appropriate packages have been installed, including libgstreamer1.0-dev, libgstreamer1.0, libgstreamer-plugins-base1.0-dev, and libgstrtspserver-1.0-dev.
 
 
 ### Using the redaction app
@@ -62,7 +62,7 @@ However, before we can run our app with a config file, we'll want to modify a fe
 
 ### 1. Main pipeline config file
 
-Examples in our config/ folder include: test_source1_fp16, test_source4_fp16, test_source8_fp16, test_source1_int8, test_source4_int8, test_source8_int8. For official DeepStream examples, please see config files in folder `<path to deepstream>/deepstream_sdk_v4.0_jetson/samples/configs/deepstream-app/`.
+Examples in our config/ folder include: test_source1_fp16, test_source4_fp16, test_source8_fp16, test_source1_int8, test_source4_int8, test_source8_int8. For official DeepStream examples, please see config files in folder `<path to deepstream>/deepstream_sdk_v4.0.2_jetson/samples/configs/deepstream-app/`.
 
 The parameter `enable` turns each of the pipeline elements on and off.
 
@@ -98,7 +98,7 @@ file-loop=0
 ```
 #### osd
     
-In this app, our goal is to redact faces, therefore our on screen display (osd) doesn't need to display anything other than a box. If you want to display texts or more, please see example config files at `<path to deepstream>/deepstream_sdk_v4.0_jetson/samples/configs/deepstream-app/`. To get started, you'd want to modify the parameters in [osd] and [primary-gie]. 
+In this app, our goal is to redact faces, therefore our on screen display (osd) doesn't need to display anything other than a box. If you want to display texts or more, please see example config files at `<path to deepstream>/deepstream_sdk_v4.0.2_jetson/samples/configs/deepstream-app/`. To get started, you'd want to modify the parameters in [osd] and [primary-gie]. 
 
 ### 2. Model config file
 

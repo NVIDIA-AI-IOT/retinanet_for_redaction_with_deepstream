@@ -216,7 +216,8 @@ parse_config_file (NvDsConfig *config, gchar *cfg_file_path)
       }
       parse_err =
           !parse_sink (&config->
-          sink_bin_sub_bin_config[config->num_sink_sub_bins], cfg_file, *group);
+          sink_bin_sub_bin_config[config->num_sink_sub_bins], cfg_file, *group,
+          cfg_file_path);
       if (config->
           sink_bin_sub_bin_config[config->num_sink_sub_bins].enable){
         config->num_sink_sub_bins++;

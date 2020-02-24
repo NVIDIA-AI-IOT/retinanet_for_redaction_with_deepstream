@@ -44,7 +44,7 @@ OBJS:= $(SRCS:.c=.o)
 CFLAGS+= -I../apps-common/includes -I../../includes -DDS_VERSION_MINOR=0 -DDS_VERSION_MAJOR=4
 
 LIBS+= -L$(LIB_INSTALL_DIR) -lnvdsgst_meta -lnvds_meta -lnvdsgst_helper -lnvds_utils -lm \
-       -lgstrtspserver-1.0 -Wl,-rpath,$(LIB_INSTALL_DIR)
+       -lgstrtspserver-1.0 -lgstrtp-1.0 -Wl,-rpath,$(LIB_INSTALL_DIR)
 
 CFLAGS+= `pkg-config --cflags $(PKGS)`
 

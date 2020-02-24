@@ -38,6 +38,32 @@ GQuark _dsmeta_quark;
 #define SOURCE_RESET_INTERVAL_IN_MS 60000
 
 /**
+ * @brief  Add the (nvmsgconv->nvmsgbroker) sink-bin to the
+ *         overall DS pipeline (if any configured) and link the same to
+ *         common_elements.tee (This tee connects
+ *         the common analytics path to Tiler/display-sink and 
+ *         to configured broker sink if any)
+ *         NOTE: This API shall return TRUE if there are no
+ *         broker sinks to add to pipeline
+ *
+ * @param  appCtx [IN]
+ * @return TRUE if succussful; FALSE otherwise
+ */
+static gboolean add_and_link_broker_sink (AppCtx * appCtx);
+
+/** 
+ * @brief  Checks if there are any [sink] groups
+ *         configured for source_id=provided source_id
+ *         NOTE: source_id key and this API is valid only when we
+ *         disable [tiler] and thus use demuxer for individual
+ *         stream out
+ * @param  config [IN] The DS Pipeline configuration struct
+ * @param  source_id [IN] Source ID for which a specific [sink]
+ *         group is searched for
+ */
+static gboolean is_sink_available_for_source_id(NvDsConfig *config, guint source_id);
+
+/**
  * Function called at regular interval when one of NV_DS_SOURCE_RTSP type
  * source in the pipeline is down / disconnected. This function try to
  * reconnect the source by resetting that source pipeline.
@@ -348,7 +374,7 @@ process_meta (AppCtx * appCtx, NvDsBatchMeta * batch_meta)
   // For single source always display text either with demuxer or with tiler
   if (!appCtx->config.tiled_display_config.enable ||
       appCtx->config.num_source_sub_bins == 1) {
-    appCtx->show_bbox_text = 0; // redaction modified
+    appCtx->show_bbox_text = 0;
   }
 
   for (NvDsMetaList * l_frame = batch_meta->frame_meta_list; l_frame != NULL;
@@ -376,9 +402,6 @@ process_meta (AppCtx * appCtx, NvDsBatchMeta * batch_meta)
       }
       g_free (obj->text_params.display_text);
       obj->text_params.display_text = NULL;
-      
-      // redaction modified
-      
       /*
       if (gie_config != NULL) {
         if (g_hash_table_contains (gie_config->bbox_border_color_table,
@@ -391,7 +414,7 @@ process_meta (AppCtx * appCtx, NvDsBatchMeta * batch_meta)
           obj->rect_params.border_color = gie_config->bbox_border_color;
         }
         obj->rect_params.border_width = appCtx->config.osd_config.border_width;
-
+	
         if (g_hash_table_contains (gie_config->bbox_bg_color_table,
                 class_index + (gchar *) NULL)) {
           obj->rect_params.has_bg_color = 1;
@@ -404,6 +427,7 @@ process_meta (AppCtx * appCtx, NvDsBatchMeta * batch_meta)
         }
       }
       */
+
       NvOSD_RectParams * rect_params = &(obj->rect_params);
       /* Draw black patch to cover faces (class_id = 0) */
       if (obj->class_id == 0) {
@@ -414,6 +438,7 @@ process_meta (AppCtx * appCtx, NvDsBatchMeta * batch_meta)
         rect_params->bg_color.blue = 0.0;
         rect_params->bg_color.alpha = 1.0;
       }
+
       if (!appCtx->show_bbox_text)
         continue;
 
@@ -542,7 +567,7 @@ gie_processing_done_buf_prob (GstPad * pad, GstPadProbeInfo * info,
  * Buffer probe function after tracker.
  */
 static GstPadProbeReturn
-tracking_done_buf_prob (GstPad * pad, GstPadProbeInfo * info, gpointer u_data)
+analytics_done_buf_prob (GstPad * pad, GstPadProbeInfo * info, gpointer u_data)
 {
   NvDsInstanceBin *bin = (NvDsInstanceBin *) u_data;
   guint index = bin->index;
@@ -559,8 +584,8 @@ tracking_done_buf_prob (GstPad * pad, GstPadProbeInfo * info, gpointer u_data)
    */
   write_kitti_track_output(appCtx, batch_meta);
 
-  if (appCtx->primary_bbox_generated_cb)
-    appCtx->primary_bbox_generated_cb (appCtx, buf, batch_meta, index);
+  if (appCtx->bbox_generated_post_analytics_cb)
+    appCtx->bbox_generated_post_analytics_cb (appCtx, buf, batch_meta, index);
   return GST_PAD_PROBE_OK;
 }
 
@@ -590,6 +615,48 @@ latency_measurement_buf_prob(GstPad * pad, GstPadProbeInfo * info, gpointer u_da
   }
 
   return GST_PAD_PROBE_OK;
+}
+
+static gboolean
+add_and_link_broker_sink (AppCtx * appCtx)
+{
+  NvDsConfig *config = &appCtx->config;
+  /** Only first instance_bin broker sink 
+   * employed as there's only one analytics path for N sources
+   * NOTE: There shall be only one [sink] group 
+   * with type=6 (NV_DS_SINK_MSG_CONV_BROKER)
+   * a) Multiple of them does not make sense as we have only
+   * one analytics pipe generating the data for broker sink
+   * b) If Multiple broker sinks are configured by the user
+   * in config file, only the first in the order of 
+   * appearance will be considered
+   * and others shall be ignored
+   * c) Ideally it should be documented (or obvious) that:
+   * multiple [sink] groups with type=6 (NV_DS_SINK_MSG_CONV_BROKER)
+   * is invalid
+   */
+  NvDsInstanceBin *instance_bin = &appCtx->pipeline.instance_bins[0];
+  NvDsPipeline *pipeline = &appCtx->pipeline;
+
+  for (guint i = 0; i < config->num_sink_sub_bins; i++) {
+    if(config->sink_bin_sub_bin_config[i].type == NV_DS_SINK_MSG_CONV_BROKER)
+    {
+      if(!pipeline->common_elements.tee) {
+         NVGSTDS_ERR_MSG_V ("%s failed; broker added without analytics; check config file\n", __func__);
+         return FALSE;
+      }
+      /** add the broker sink bin to pipeline */
+      if(!gst_bin_add (GST_BIN (pipeline->pipeline), instance_bin->sink_bin.sub_bins[i].bin)) {
+        return FALSE;
+      }
+      /** link the broker sink bin to the common_elements tee 
+       * (The tee after nvinfer -> tracker (optional) -> sgies (optional) block) */
+      if (!link_element_to_tee_src_pad (pipeline->common_elements.tee, instance_bin->sink_bin.sub_bins[i].bin)) {
+        return FALSE;
+      }
+    }
+  }
+  return TRUE;
 }
 
 /**
@@ -660,10 +727,11 @@ done:
 static gboolean
 create_common_elements (NvDsConfig * config, NvDsPipeline * pipeline,
     GstElement ** sink_elem, GstElement ** src_elem,
-    bbox_generated_callback primary_bbox_generated_cb)
+    bbox_generated_callback bbox_generated_post_analytics_cb)
 {
   gboolean ret = FALSE;
   *sink_elem = *src_elem = NULL;
+
   if (config->primary_gie_config.enable) {
     if (config->num_secondary_gie_sub_bins > 0) {
       if (!create_secondary_gie_bin (config->num_secondary_gie_sub_bins,
@@ -725,24 +793,38 @@ create_common_elements (NvDsConfig * config, NvDsPipeline * pipeline,
         pipeline->common_elements.appCtx);
   }
 
-  if (config->primary_gie_config.enable) {
-    if (config->tracker_config.enable) {
-      NVGSTDS_ELEM_ADD_PROBE (pipeline->common_elements.
+  if(*src_elem) {
+    NVGSTDS_ELEM_ADD_PROBE (pipeline->common_elements.
           primary_bbox_buffer_probe_id,
-          pipeline->common_elements.tracker_bin.bin, "src",
-          tracking_done_buf_prob, GST_PAD_PROBE_TYPE_BUFFER,
+          *src_elem, "src",
+          analytics_done_buf_prob, GST_PAD_PROBE_TYPE_BUFFER,
           &pipeline->common_elements);
-    } else {
-      NVGSTDS_ELEM_ADD_PROBE (pipeline->common_elements.
-          primary_bbox_buffer_probe_id,
-          pipeline->common_elements.primary_gie_bin.bin, "src",
-          tracking_done_buf_prob, GST_PAD_PROBE_TYPE_BUFFER,
-          &pipeline->common_elements);
+    pipeline->common_elements.tee = gst_element_factory_make (NVDS_ELEM_TEE, "common_analytics_tee");
+    if (!pipeline->common_elements.tee) {
+      NVGSTDS_ERR_MSG_V ("Failed to create element 'common_analytics_tee'");
+      goto done;
     }
+
+    gst_bin_add (GST_BIN (pipeline->pipeline),
+          pipeline->common_elements.tee);
+
+    NVGSTDS_LINK_ELEMENT (*src_elem, pipeline->common_elements.tee);
+    *src_elem = pipeline->common_elements.tee;
   }
+
   ret = TRUE;
 done:
   return ret;
+}
+
+static gboolean is_sink_available_for_source_id(NvDsConfig *config, guint source_id) {
+  for (guint j = 0; j < config->num_sink_sub_bins; j++) {
+    if (config->sink_bin_sub_bin_config[j].enable &&
+        config->sink_bin_sub_bin_config[j].source_id == source_id) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 /**
@@ -750,7 +832,7 @@ done:
  */
 gboolean
 create_pipeline (AppCtx * appCtx,
-    bbox_generated_callback primary_bbox_generated_cb,
+    bbox_generated_callback bbox_generated_post_analytics_cb,
     bbox_generated_callback all_bbox_generated_cb, perf_callback perf_cb,
     overlay_graphics_callback overlay_graphics_cb)
 {
@@ -768,7 +850,7 @@ create_pipeline (AppCtx * appCtx,
   _dsmeta_quark = g_quark_from_static_string (NVDS_META_STRING);
 
   appCtx->all_bbox_generated_cb = all_bbox_generated_cb;
-  appCtx->primary_bbox_generated_cb = primary_bbox_generated_cb;
+  appCtx->bbox_generated_post_analytics_cb = bbox_generated_post_analytics_cb;
   appCtx->overlay_graphics_cb = overlay_graphics_cb;
 
   if (config->osd_config.num_out_buffers < 8) {
@@ -814,7 +896,8 @@ create_pipeline (AppCtx * appCtx,
         break;
     }
   }
-
+  /** Register multi_src_bin specific callbacks if any */
+  pipeline->multi_src_bin.rtcp_sender_report_cb = appCtx->rtcp_sender_report_cb;
   /*
    * Add muxer and < N > source components to the pipeline based
    * on the settings in configuration file.
@@ -884,23 +967,13 @@ create_pipeline (AppCtx * appCtx,
 
     for (i = 0; i < config->num_source_sub_bins; i++) {
       gchar pad_name[16];
-      gboolean create_instance = FALSE;
       GstPad *demux_src_pad;
-      guint j;
 
       /* Check if any sink has been configured to render/encode output for
        * source index `i`. The processing instance for that source will be
        * created only if atleast one sink has been configured as such.
        */
-      for (j = 0; j < config->num_sink_sub_bins; j++) {
-        if (config->sink_bin_sub_bin_config[j].enable &&
-            config->sink_bin_sub_bin_config[j].source_id == i) {
-          create_instance = TRUE;
-          break;
-        }
-      }
-
-      if (!create_instance)
+      if (!is_sink_available_for_source_id(config, i))
         continue;
 
       if (!create_processing_instance (appCtx, i)) {
@@ -940,7 +1013,11 @@ create_pipeline (AppCtx * appCtx,
   }
   // create and add common components to pipeline.
   if (!create_common_elements (config, pipeline, &tmp_elem1, &tmp_elem2,
-          primary_bbox_generated_cb)) {
+          bbox_generated_post_analytics_cb)) {
+    goto done;
+  }
+
+  if(!add_and_link_broker_sink(appCtx)) {
     goto done;
   }
 
