@@ -1,3 +1,7 @@
+# ------------------------------------------------------
+# This sample application is no longer maintained
+# ------------------------------------------------------
+
 # Face Redaction with DeepStream
 
 This sample shows how to train and deploy a deep learning model for the real time redaction of faces from video streams using the NVIDIA DeepStream SDK.
